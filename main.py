@@ -1,16 +1,24 @@
-from web_scrapping import web_scrapping
+from web_scrapping_dataset import scrape_goodreads_dataset, save_dataset
 
 def main():
-    print("Welcome! Describe the book you want.")
-    print("Please, if you want to search by author start your search with 'Author: '")
-    print("Please, if you want to search by genre start your search with 'Genre: '")
-    print("CC, write whatever you want")
+    #print("Welcome! Describe the book you want.")
+    #print("Please, if you want to search by author start your search with 'Author: '")
+    #print("Please, if you want to search by genre start your search with 'Genre: '")
+    #print("CC, write whatever you want")
 
 
-    user_input = (input(""))
-    res = web_scrapping(user_input)
-    print(res)
+    #user_input = (input(""))
+    #res = web_scrapping(user_input)
+    #print(res)
+    fiction_books = scrape_goodreads_dataset("fiction", num_books=7000)
+    nonfiction_books = scrape_goodreads_dataset("nonfiction", num_books=3000)
 
+    nonfiction_books = scrape_goodreads_dataset("non-fiction", num_books=3000)
+
+    
+    full_dataset = fiction_books + nonfiction_books
+
+    save_dataset(full_dataset, 'goodreads_full_dataset.json')
 
 if __name__ == "__main__":
         main()

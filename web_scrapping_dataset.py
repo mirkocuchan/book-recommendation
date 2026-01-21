@@ -58,7 +58,7 @@ def scrape_book_details(book_url, headers):
         }
 
 
-def scrape_goodreads_dataset(genre='fiction', num_books=7000, include_details=True):
+def scrape_goodreads_dataset(genre='fiction', num_books=7000):
     
     dataset = []
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
