@@ -63,13 +63,12 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
     dataset = []
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
-    page = 1
-    books_per_page = 50  # Aproximadamente
     
     print(f"Starting scrape for {genre}...")
+    url = f'https://www.goodreads.com/shelf/show/{genre}'
     
-    while len(dataset) < num_books:
-        url = f'https://www.goodreads.com/shelf/show/{genre}?page={page}'
+    while len(dataset) < num_books and url:
+        
         
         try:
             response = requests.get(url, headers=headers, timeout=10)
@@ -78,7 +77,6 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
             book_divs = soup.find_all('div', class_='elementList')
             
             if not book_divs:
-                print(f"No more books found at page {page}")
                 break
             
             for div in book_divs:
@@ -90,6 +88,7 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
                     continue
                 
                 title = title_elem.get_text().strip()
+
                 book_url = 'https://www.goodreads.com' + title_elem['href']
                 
                 author_elem = div.find('span', itemprop='name')
@@ -115,20 +114,126 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
                 
                 dataset.append(book_data)
             
-            page += 1
-            time.sleep(2)
-            
-            if len(dataset) % 100 == 0:
-                save_dataset(dataset, f'goodreads_{genre}_partial.json')
-                print(f"Progress saved: {len(dataset)} books")
+            next_page = soup.find('a', class_='next_page', rel='next')
+
+            if not next_page:
+                next_page = soup.find('a', class_='next_page')
+
+            if next_page and next_page.get('href'):
+                url = 'https://www.goodreads.com' + next_page['href']
+                print("Going to next page:", url)
+                time.sleep(2)
+            else:
+                print("No next page link found — finishing genre:", genre)
+                break
         
         except Exception as e:
-            print(f"Error on page {page}: {e}")
+            print(f"Error on page: {e}")
             time.sleep(5)
             continue
+    return dataset
 
 
 
 def save_dataset(dataset, filename):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(dataset, f, indent=2, ensure_ascii=False)
+
+def merge_json_files(file1, file2, output_file):
+    with open(file1, 'r', encoding='utf-8') as f1, open(file2, 'r', encoding='utf-8') as f2:
+        data1 = json.load(f1)
+        data2 = json.load(f2)
+        
+    combined = data1 + data2
+    
+    with open(output_file, 'w', encoding='utf-8') as f_out:
+        json.dump(combined, f_out, indent=2, ensure_ascii=False)
+
+
+#import requests
+#import re
+#from bs4 import BeautifulSoup
+
+#def is_duplicate(new_title, existing_titles):
+#    new_title_lower = new_title.lower().strip()
+#    for existing_title in existing_titles:
+#        existing_lower = existing_title.lower().strip()
+
+#        if new_title_lower in existing_lower or existing_lower in new_title_lower:
+#            return True
+#    return False
+
+#def is_first_volume(new_title):
+#    new_title_lower = new_title.lower().strip()
+#    pattern = r'#([2-9]|\d{2,})'
+#    
+#    if not re.search(pattern, new_title_lower):
+#        return True
+#    else:
+#        return False
+
+    
+#def web_scrapping(user_input, max_recommendations   =10):
+#    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        
+#    is_author_search = user_input.lower().startswith("author: ")
+#    is_genre_search = user_input.lower().startswith("genre: ") 
+#    
+#    if is_author_search:
+#        query = user_input[8:].strip()
+#    elif is_genre_search:
+#        query = user_input[7:].strip()
+#    else:
+#        query = user_input.strip()
+    
+#    if is_genre_search:
+#        genre_slug = query.lower().replace(" ", "-")
+#        url = f'https://www.goodreads.com/shelf/show/{genre_slug}'
+#    else:
+#        modified_query = query.replace(" ", "+")
+#        url = f'https://www.goodreads.com/search?utf8=%E2%9C%93&q={modified_query}&search_type=books'
+
+#    web_page = requests.get(url, headers=headers)
+#    content_of_webpage = web_page.text
+#    soup = BeautifulSoup(content_of_webpage, 'html.parser')
+#    possible_recommendations = {}
+
+#    if is_genre_search:
+#        for div in soup.find_all('div', class_='elementList'):
+#            if len(possible_recommendations) >= max_recommendations:
+#                break
+            
+#            title_element = div.find('a', class_='bookTitle')
+#            if title_element:
+#                title = title_element.get_text().strip()
+                
+#                if not is_duplicate(title, possible_recommendations.keys()) and is_first_volume(title):
+#                    author_element = div.find('span', itemprop='author')
+#                    if author_element:
+#                        author_name = author_element.find('span', itemprop='name')
+#                        if author_name:
+#                            author = author_name.get_text().strip()
+#                            possible_recommendations[title] = author
+#    else:
+#        for line in soup.find_all('tr', itemtype="http://schema.org/Book"):
+#            if len(possible_recommendations) >= max_recommendations:
+#                break
+
+#            title_element = line.find('span', itemprop='name')
+#            if title_element:
+#                title = title_element.get_text()
+#                
+#                if not is_duplicate(title, possible_recommendations.keys()) and is_first_volume(title):
+#                    author_element = line.find('span', itemprop='author')
+#                    if author_element:
+#                        author_name = author_element.find('span', itemprop='name') 
+#                        if author_name:
+#                            author = author_name.get_text()
+#                            
+#                            if is_author_search:
+#                                if query.lower() not in author.lower():
+#                                    continue
+#                            
+#                            possible_recommendations[title] = author
+#    
+#    return possible_recommendations
