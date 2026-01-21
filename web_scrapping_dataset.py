@@ -114,10 +114,10 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
                 
                 dataset.append(book_data)
             
-            next_page = soup.find('a', class_='next_page', rel='next')
+            next_page = soup.find('a', class_='next_page')
 
             if not next_page:
-                next_page = soup.find('a', class_='next_page')
+                next_page = soup.find('a', rel=lambda value: value and 'next' in value)
 
             if next_page and next_page.get('href'):
                 url = 'https://www.goodreads.com' + next_page['href']
