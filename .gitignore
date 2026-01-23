@@ -1,18 +1,18 @@
 # Virtual Environment
-venv/
-env/
-ENV/
-
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
 
-# IDE
+# Entorno virtual
+venv/
+env/
+.env
+
+# Datasets y archivos de datos (Archivos generados)
+*.json
+*.csv
+
+# Logs y temporales
+*.log
 .vscode/
-.idea/
-
-# OS
-.DS_Store

@@ -68,12 +68,10 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
     url = f'https://www.goodreads.com/shelf/show/{genre}'
     
     while len(dataset) < num_books and url:
-        
-        
         try:
             response = requests.get(url, headers=headers, timeout=10)
             soup = BeautifulSoup(response.text, 'html.parser')
-            
+
             book_divs = soup.find_all('div', class_='elementList')
             
             if not book_divs:
@@ -114,18 +112,17 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
                 
                 dataset.append(book_data)
             
-            next_page = soup.find('a', class_='next_page')
+            #next_page = soup.find('a', class_='next_page')
+            #if not next_page:
+            #    next_page = soup.find('a', rel=lambda value: value and 'next' in value)
 
-            if not next_page:
-                next_page = soup.find('a', rel=lambda value: value and 'next' in value)
-
-            if next_page and next_page.get('href'):
-                url = 'https://www.goodreads.com' + next_page['href']
-                print("Going to next page:", url)
-                time.sleep(2)
-            else:
-                print("No next page link found — finishing genre:", genre)
-                break
+            #if next_page and next_page.get('href'):
+            #    url = 'https://www.goodreads.com' + next_page['href']
+            #    print("Going to next page:", url)
+            #    time.sleep(2)   
+            #else:
+            #    print("No next page link found — finishing genre:", genre)
+            #    break
         
         except Exception as e:
             print(f"Error on page: {e}")
