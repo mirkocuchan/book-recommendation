@@ -1,4 +1,6 @@
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 books = pd.read_json('dataset_4k.json')
 
@@ -29,6 +31,16 @@ books_wo_duplicates['weighted_score'] = books_wo_duplicates.apply(
 
 books_final = books_wo_duplicates.sort_values(by='weighted_score', ascending=False)
 
+books_final['description'] = books_final['description'].str.replace(r'\n', ' ', regex=True).str.replace(r'\s+', ' ', regex=True)
+
+tfidf = TfidfVectorizer(stop_words='english')
+books_final['description'] = books_final['description'].fillna('')
+
+tfidf_matrix = tfidf.fit_transform(books_final['description'])
+
+tfidf_matrix.shape
+values = tfidf.get_feature_names_out()[3000:3010]
+print(values)
 books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 
 print(min_trustable_votes)
