@@ -1,5 +1,20 @@
 import pandas as pd
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+
+
+def clean_description(text):
+    if not isinstance(text, str):
+        return ""
+    
+    text = re.sub(r'<.*?>', ' ', text)
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    text = re.sub(r'([^a-zA-Z\s])', r' \1 ', text)
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
+    
+    text = text.lower()
+    return " ".join(text.split())
 
 
 books = pd.read_json('dataset_4k.json')
@@ -31,18 +46,24 @@ books_wo_duplicates['weighted_score'] = books_wo_duplicates.apply(
 
 books_final = books_wo_duplicates.sort_values(by='weighted_score', ascending=False)
 
-books_final['description'] = books_final['description'].str.replace(r'\n', ' ', regex=True).str.replace(r'\s+', ' ', regex=True)
+books_final['description_clean'] = books_final['description'].apply(clean_description)
 
-tfidf = TfidfVectorizer(stop_words='english')
-books_final['description'] = books_final['description'].fillna('')
+tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
+books_final['description_clean'] = books_final['description_clean'].fillna('')
 
-tfidf_matrix = tfidf.fit_transform(books_final['description'])
+tfidf_matrix = tfidf.fit_transform(books_final['description_clean'])
 
 tfidf_matrix.shape
-values = tfidf.get_feature_names_out()[3000:3010]
-print(values)
+#values = tfidf.get_feature_names_out()[3000:3050]
+#print(values)
+#this helps us get the similarities between the books, based on the words they use in the descriptions
+#cosine similarity, useful formula for this step, wikipedia page is very good
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
+
 books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 
-print(min_trustable_votes)
+
 #weight_of_rating = ((votes_of_book // votes_of_book + min_trustable_votes) * book_average_score) + (min_trustable_votes // (min_trustable_votes + votes_of_book) * avg_rating_all_books)
 
