@@ -65,8 +65,18 @@ indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicat
 #books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 
 def get_recommendations(title, cosine_sim=cosine_sim):
+    
+    query = title.strip()
+    if query not in indices.index:
+        best_match = process.extractOne(query, indices.index, processor=utils.default_process)
+        if best_match and best_match[1] > 60:
+            print(f"Couldn't find '{query}', using: '{best_match[0]}'")
+            query = best_match[0]
+        else:
+            return f"'{query}' not found. Try again, be a little more specific."
     try:
-        idx = indices[title]
+
+        idx = indices[query]
 
         sim_scores = list(enumerate(cosine_sim[idx]))
 
@@ -76,8 +86,8 @@ def get_recommendations(title, cosine_sim=cosine_sim):
         book_indices = [i[0] for i in sim_scores]
 
         return books_final[['title', 'author', 'weighted_score']].iloc[book_indices].reset_index(drop=True)
-    except KeyError:
-        return f"Libro '{title}' no está el dataset."
+    except Exception as e:
+        return f"Some error occured with '{query}': {e}"
 
 while True:
     user_input = input("\nName of the book you enjoyed (or just write 'exit'): ")
