@@ -2,7 +2,7 @@ import pandas as pd
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
-from rapidfuzz import process, utils
+from rapidfuzz import process, utils, fuzz
 
 def clean_description(text):
     if not isinstance(text, str):
@@ -63,17 +63,30 @@ cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
 
 #books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
+STOPWORDS = {
+    "the", "of", "and", "to", "in", "a", "an", "for", "on", "with"
+}
+def has_token_overlap(a, b, min_common=2):
+    tokens_a = {t for t in a.lower().split() if t not in STOPWORDS}
+    tokens_b = {t for t in b.lower().split() if t not in STOPWORDS}
+    return len(tokens_a & tokens_b) >= min_common
 
 def get_recommendations(title, cosine_sim=cosine_sim):
     
     query = title.strip()
     if query not in indices.index:
-        best_match = process.extractOne(query, indices.index, processor=utils.default_process)
-        if best_match and best_match[1] > 60:
-            print(f"Couldn't find '{query}', using: '{best_match[0]}'")
-            query = best_match[0]
-        else:
-            return f"'{query}' not found. Try again, be a little more specific."
+        best_match = process.extractOne(
+            query, 
+            indices.index, 
+            scorer=fuzz.partial_token_set_ratio
+        )
+        if best_match:
+            candidate, score, idx = best_match
+            if score >= 90 and has_token_overlap(query, candidate): 
+                print(f"Couldn't find '{query}', using: '{best_match[0]}'")
+                query = best_match[0]
+            else:
+                return f"'{query}' not found. Try again, be a little more specific."
     try:
 
         idx = indices[query]
