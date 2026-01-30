@@ -64,29 +64,47 @@ indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicat
 
 #books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 STOPWORDS = {
-    "the", "of", "and", "to", "in", "a", "an", "for", "on", "with"
+    "the", "of", "and", "to", "in", "a", "an", "for", "on", "with", "book"
 }
 def has_token_overlap(a, b, min_common=2):
-    tokens_a = {t for t in a.lower().split() if t not in STOPWORDS}
-    tokens_b = {t for t in b.lower().split() if t not in STOPWORDS}
+    tokens_a = {t for t in a.lower().split() if t not in STOPWORDS and not t.isdigit()}
+    tokens_b = {t for t in b.lower().split() if t not in STOPWORDS and not t.isdigit()}
     return len(tokens_a & tokens_b) >= min_common
 
 def get_recommendations(title, cosine_sim=cosine_sim):
     
-    query = title.strip()
-    if query not in indices.index:
-        best_match = process.extractOne(
-            query, 
-            indices.index, 
-            scorer=fuzz.partial_token_set_ratio
-        )
-        if best_match:
-            candidate, score, idx = best_match
-            if score >= 90 and has_token_overlap(query, candidate): 
-                print(f"Couldn't find '{query}', using: '{best_match[0]}'")
-                query = best_match[0]
+    query = title.lower().strip()
+    if len(query) < 3 or (query.isdigit() and len(query) < 4) or query in STOPWORDS:
+        return f"'{title}' not found. Try again, be more specific."
+    
+    if query not in indices.index:#.str.lower
+        #saga was causing trouble
+        saga_matches = [
+            t for t in indices.index
+            if query in t.lower()
+        ]
+
+        if saga_matches:
+            query = saga_matches[0]
+        else:
+            best_match = process.extractOne(
+                query,
+                indices.index,
+                scorer=fuzz.partial_token_set_ratio
+            )
+            if not best_match:
+                return f"'{title}' not found. Try again."
+        
+            candidate, score, _ = best_match
+            min_score = 85 if len(query) >= 8 else 90
+            if score >= min_score and has_token_overlap(query, candidate):
+                print(f"Couldn't find '{title}', using: '{candidate}'")
+                query = candidate
             else:
-                return f"'{query}' not found. Try again, be a little more specific."
+                return f"'{title}' not found. Try again, be a little more specific."
+        
+            #if (len(query_tokens) == 1 and score >= 85) or (len(query_tokens) >= 2 and score >= 90 and has_token_overlap(query, candidate)): 
+            
     try:
 
         idx = indices[query]
