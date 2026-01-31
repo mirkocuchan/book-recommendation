@@ -146,11 +146,7 @@ def get_recommendations(title, cosine_sim=cosine_final):
         
         candidates = pd.DataFrame(sim_scores, columns=['index', 'similarity'])
         
-        candidates = candidates.merge(
-        books_final[['weighted_score', 'rating']],
-        left_on='index',
-        right_index=True
-        )
+        candidates = candidates.merge(books_final[['weighted_score', 'avg_rating']], left_on='index', right_index=True)
 
         #candidates = candidates[candidates['rating'] >= 3]
         #no es necesario porque no tenemos nada de 3, pero es una posibilidad
@@ -176,8 +172,6 @@ while True:
         recomendaciones = user_based_recommendation(user_input)
     else:
         recomendaciones = get_recommendations(user_input)
-
-    recomendaciones = get_recommendations(user_input)
     
     if isinstance(recomendaciones, str):
         print(recomendaciones)
