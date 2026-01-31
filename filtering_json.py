@@ -1,8 +1,10 @@
 import pandas as pd
+import os
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from rapidfuzz import process, utils, fuzz
+from user_based_recommendation import user_based_recommendation
 
 def clean_description(text):
     if not isinstance(text, str):
@@ -47,22 +49,45 @@ books_final = books_final.reset_index(drop=True)
 
 books_final['description_clean'] = books_final['description'].apply(clean_description)
 
+def normalize_genres(genres, n=4):
+    if not isinstance(genres, list):
+        return ''
+    return ' '.join(
+        g.lower().replace(' ', '') for g in genres[:n]
+    )
+def normalize_author(author):
+    if not isinstance(author, str):
+        return ''
+    return author.lower().replace(' ', '')
+books_final['metadata'] = (
+    books_final['author'].apply(normalize_author) + ' ' +
+    books_final['genres'].apply(normalize_genres)
+)
 tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
+tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
 #books_final['description_clean'] = books_final['description_clean'].fillna('')
 
 tfidf_matrix = tfidf.fit_transform(books_final['description_clean'])
+tfidf_matrix_meta = tfidf_meta.fit_transform(books_final['metadata'])
 
 tfidf_matrix.shape
+tfidf_matrix_meta.shape
+
 #values = tfidf.get_feature_names_out()[3000:3050]
 #print(values)
 #this helps us get the similarities between the books, based on the words they use in the descriptions
 #cosine similarity, useful formula for this step, wikipedia page is very good
-cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+cosine_sim_desc = linear_kernel(tfidf_matrix, tfidf_matrix)
+cosine_sim_meta = linear_kernel(tfidf_matrix_meta, tfidf_matrix_meta)
+
+peso_desc = 0.7
+peso_meta = 0.3
+cosine_final = peso_desc * cosine_sim_desc + peso_meta * cosine_sim_meta
 #with the title we can identify the index of a book
 
 indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
 
-#books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
+books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 STOPWORDS = {
     "the", "of", "and", "to", "in", "a", "an", "for", "on", "with", "book"
 }
@@ -71,7 +96,7 @@ def has_token_overlap(a, b, min_common=2):
     tokens_b = {t for t in b.lower().split() if t not in STOPWORDS and not t.isdigit()}
     return len(tokens_a & tokens_b) >= min_common
 
-def get_recommendations(title, cosine_sim=cosine_sim):
+def get_recommendations(title, cosine_sim=cosine_final):
     
     query = title.lower().strip()
     if len(query) < 3 or (query.isdigit() and len(query) < 4) or query in STOPWORDS:
@@ -96,8 +121,13 @@ def get_recommendations(title, cosine_sim=cosine_sim):
                 return f"'{title}' not found. Try again."
         
             candidate, score, _ = best_match
+
             min_score = 85 if len(query) >= 8 else 90
-            if score >= min_score and has_token_overlap(query, candidate):
+            query_tokens = {
+                t for t in query.split()
+                if t not in STOPWORDS and not t.isdigit()
+            }
+            if score >= min_score and len(query_tokens) == 1 or has_token_overlap(query, candidate, min_common=1):
                 print(f"Couldn't find '{title}', using: '{candidate}'")
                 query = candidate
             else:
@@ -112,26 +142,50 @@ def get_recommendations(title, cosine_sim=cosine_sim):
         sim_scores = list(enumerate(cosine_sim[idx]))
 
         sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-        sim_scores = sim_scores[1:11]
+        sim_scores = sim_scores[1:31]
+        
+        candidates = pd.DataFrame(sim_scores, columns=['index', 'similarity'])
+        
+        candidates = candidates.merge(
+        books_final[['weighted_score', 'rating']],
+        left_on='index',
+        right_index=True
+        )
 
-        book_indices = [i[0] for i in sim_scores]
+        #candidates = candidates[candidates['rating'] >= 3]
+        #no es necesario porque no tenemos nada de 3, pero es una posibilidad
 
-        return books_final[['title', 'author', 'weighted_score']].iloc[book_indices].reset_index(drop=True)
+        candidates['final_score'] = (candidates['similarity'] * candidates['weighted_score'])
+        candidates = candidates.sort_values(by='final_score', ascending=False)
+        final_indices = candidates['index'].head(10)
+
+        return books_final.loc[final_indices, ['title', 'author', 'weighted_score']].reset_index(drop=True)
+        #book_indices = [i[0] for i in sim_scores]
+        #return books_final[['title', 'author', 'weighted_score']].iloc[book_indices].reset_index(drop=True)
     except Exception as e:
         return f"Some error occured with '{query}': {e}"
 
 while True:
-    user_input = input("\nName of the book you enjoyed (or just write 'exit'): ")
-    
+    user_input = input("\nName of the book you enjoyed or drag and drop your Goodreads Export (or just write 'exit'): ")
+    user_input = user_input.replace('"', '').replace("'", "")
     if user_input.lower() == 'exit':
         break
-        
+    
+    if user_input.endswith('.csv') and os.path.exists(user_input):
+        print(f"Reading file: {user_input}...")
+        recomendaciones = user_based_recommendation(user_input)
+    else:
+        recomendaciones = get_recommendations(user_input)
+
     recomendaciones = get_recommendations(user_input)
     
     if isinstance(recomendaciones, str):
         print(recomendaciones)
     else:
-        print(f"\nIf you liked '{user_input}', you should try:\n")
-        print(recomendaciones)
+        if user_input.endswith('.csv'):
+            print(f"\nBased on your library, you should try:\n")
+        else:
+            print(f"\nIf you liked '{user_input}', you should try:\n")
+        print(recomendaciones[['title', 'author', 'weighted_score']])
 #weight_of_rating = ((votes_of_book // votes_of_book + min_trustable_votes) * book_average_score) + (min_trustable_votes // (min_trustable_votes + votes_of_book) * avg_rating_all_books)
 

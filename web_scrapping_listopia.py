@@ -5,7 +5,6 @@ import time
 from bs4 import BeautifulSoup
 
 def extract_rating_info(rating_text):
-    # Formato en listas: "4.12 avg rating — 1,234,567 ratings"
     rating_match = re.search(r'([\d.]+)\s+avg rating', rating_text)
     num_ratings_match = re.search(r'([\d,]+)\s+ratings', rating_text)
     return {
@@ -18,18 +17,16 @@ def scrape_book_details(book_url, headers):
         response = requests.get(book_url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Descripción
+        
         description_elem = soup.find('div', {'data-testid': 'description'})
         description = description_elem.get_text(strip=True) if description_elem else None
         
-        # Géneros
         genres = []
         genres_section = soup.find('div', {'data-testid': 'genresList'})
         if genres_section:
             genre_buttons = genres_section.find_all('a', class_='Button--tag')
             genres = list(set([btn.get_text(strip=True) for btn in genre_buttons]))
         
-        # Páginas y Formato
         pages_elem = soup.find('p', {'data-testid': 'pagesFormat'})
         pages_text = pages_elem.get_text(strip=True) if pages_elem else None
         
@@ -77,7 +74,6 @@ def scrape_goodreads_dataset(genre_type='fiction', num_books=7000):
                 break
                 
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Las listas usan filas de tabla (tr)
             book_rows = soup.find_all('tr', itemtype='http://schema.org/Book')
             
             if not book_rows:
@@ -95,13 +91,12 @@ def scrape_goodreads_dataset(genre_type='fiction', num_books=7000):
                 title = title_elem.get_text().strip()
                 author = row.find('a', class_='authorName').get_text().strip()
                 
-                # Info de rating
+            
                 rating_text = row.find('span', class_='minirating').get_text()
                 rating_info = extract_rating_info(rating_text)
                 
                 print(f"[{len(dataset)+1}/{num_books}] Procesando: {title[:40]}")
                 
-                # Detalles profundos
                 details = scrape_book_details(book_url, headers)
                 
                 book_data = {
@@ -117,9 +112,8 @@ def scrape_goodreads_dataset(genre_type='fiction', num_books=7000):
                 dataset.append(book_data)
                 seen_urls.add(book_url)
                 
-                time.sleep(1.1) # Respeto al servidor
+                time.sleep(1.1)
                 
-            # Guardado parcial cada 100 libros
             if len(dataset) % 100 == 0:
                 save_dataset(dataset, f'goodreads_{genre_type}_partial.json')
 
@@ -143,6 +137,6 @@ def merge_json_files(file1, file2, output_file):
             d1, d2 = json.load(f1), json.load(f2)
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(d1 + d2, f, indent=2, ensure_ascii=False)
-        print(f"\n✅ Dataset total creado: {output_file}")
+        print(f"\nDataset total creado: {output_file}")
     except Exception as e:
         print(f"Error al unir: {e}")
