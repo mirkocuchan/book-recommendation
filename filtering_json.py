@@ -1,10 +1,10 @@
 import pandas as pd
 import os
 import re
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from rapidfuzz import process, utils, fuzz
-from user_based_recommendation import user_based_recommendation
 
 def clean_description(text):
     if not isinstance(text, str):
@@ -96,6 +96,29 @@ def has_token_overlap(a, b, min_common=2):
     tokens_b = {t for t in b.lower().split() if t not in STOPWORDS and not t.isdigit()}
     return len(tokens_a & tokens_b) >= min_common
 
+def user_based_recommendation(file_path):
+    try:
+        user_books_csv = pd.read_csv(file_path, on_bad_lines='skip')
+        user_books = user_books_csv(['title', 'my rating'])
+
+        user_books = user_books.merge(books_final.reset_index(), on='title')
+
+        user_vector = np.zeros(tfidf_matrix.shape[1])
+
+        for _, row in user_books.iterrows():
+            book_idx = row['index']
+            rating = row['my_rating']
+
+            weight = rating / 5  
+            user_vector += tfidf_matrix[book_idx].toarray()[0] * weight
+        
+    except FileNotFoundError:
+        print("Error: El archivo no existe en esa ruta.")
+        return None
+    except Exception as e:
+        print(f"Ocurrió un error leyendo el CSV: {e}")
+        return None
+
 def get_recommendations(title, cosine_sim=cosine_final):
     
     query = title.lower().strip()
@@ -142,7 +165,7 @@ def get_recommendations(title, cosine_sim=cosine_final):
         sim_scores = list(enumerate(cosine_sim[idx]))
 
         sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-        sim_scores = sim_scores[1:31]
+        sim_scores = sim_scores[1:11]
         
         candidates = pd.DataFrame(sim_scores, columns=['index', 'similarity'])
         
