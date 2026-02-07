@@ -5,6 +5,8 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from rapidfuzz import process, utils, fuzz
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 def clean_description(text):
     if not isinstance(text, str):
@@ -99,7 +101,7 @@ def has_token_overlap(a, b, min_common=2):
 def user_based_recommendation(file_path):
     try:
         user_books_csv = pd.read_csv(file_path, on_bad_lines='skip')
-        user_books = user_books_csv(['title', 'my rating'])
+        user_books = user_books_csv[['title', 'my rating']]
 
         user_books = user_books.merge(books_final.reset_index(), on='title')
 
@@ -111,7 +113,15 @@ def user_based_recommendation(file_path):
 
             weight = rating / 5  
             user_vector += tfidf_matrix[book_idx].toarray()[0] * weight
-        
+        #cambiamos la shape asi cosine la toma 
+        similarity = cosine_similarity(user_vector.reshape(1, -1), tfidf_matrix)
+        scores = list(enumerate(similarity[0]))
+
+        scores = sorted(scores, key=lambda x: x[1], reverse=True)
+        top_recommendations = [i for i, _ in scores[:10]]
+
+        recommendations = books_final.loc[top_recommendations, ['title', 'author', 'weighted_score']]
+
     except FileNotFoundError:
         print("Error: El archivo no existe en esa ruta.")
         return None
