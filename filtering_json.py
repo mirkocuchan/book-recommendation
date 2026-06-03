@@ -108,7 +108,7 @@ def user_based_recommendation(file_path):
         user_vector = np.zeros(tfidf_matrix.shape[1])
 
         for _, row in user_books.iterrows():
-            book_idx = row['index']
+            book_idx = row['index'] 
             rating = row['my_rating']
 
             weight = rating / 5  
