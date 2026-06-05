@@ -167,9 +167,7 @@ def get_recommendations(title, cosine_sim=cosine_final):
                 return f"'{title}' not found. Try again, be a little more specific."
         
             #if (len(query_tokens) == 1 and score >= 85) or (len(query_tokens) >= 2 and score >= 90 and has_token_overlap(query, candidate)): 
-            
     try:
-
         idx = indices[query]
 
         sim_scores = list(enumerate(cosine_sim[idx]))

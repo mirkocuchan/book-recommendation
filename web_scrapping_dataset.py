@@ -15,7 +15,6 @@ def extract_rating_info(rating_text):
             'year_published': int(year_match.group(1)) if year_match else None
     }
 
-
 def scrape_book_details(book_url, headers):
     try:
         response = requests.get(book_url, headers=headers, timeout=10)
@@ -56,7 +55,6 @@ def scrape_book_details(book_url, headers):
             'pages': None,
             'format': None
         }
-
 
 def scrape_goodreads_dataset(genre='fiction', num_books=7000):
     
@@ -129,8 +127,6 @@ def scrape_goodreads_dataset(genre='fiction', num_books=7000):
             time.sleep(5)
             continue
     return dataset
-
-
 
 def save_dataset(dataset, filename):
     with open(filename, 'w', encoding='utf-8') as f:
