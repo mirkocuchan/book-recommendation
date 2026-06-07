@@ -85,9 +85,9 @@ def normalize_year(year):
     
 books_final['metadata'] = (
     books_final['author'].apply(normalize_author) + ' ' +
-    books_final['genres'].apply(normalize_genres) + ' '
-    + books_final['pages'].apply(normalize_pages) + ' '
-    + books_final['year_published'].apply(normalize_year)
+    books_final['genres'].apply(normalize_genres) + ' ' +
+    books_final['pages'].apply(normalize_pages) + ' ' + 
+    books_final['year_published'].apply(normalize_year)
 )
 tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
 tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
