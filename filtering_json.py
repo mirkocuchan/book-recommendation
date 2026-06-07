@@ -61,9 +61,33 @@ def normalize_author(author):
     if not isinstance(author, str):
         return ''
     return author.lower().replace(' ', '')
+def normalize_pages(pages):
+    if pd.isna(pages):
+        return ''
+    
+    if pages < 200:
+        return 'shortbook'
+    elif pages < 500:
+        return 'mediumbook'
+    else:
+        return 'longbook'
+
+def normalize_year(year):
+    if pd.isna(year):
+        return ''
+
+    if year < 1950:
+        return 'classicera'
+    elif year < 2000:
+        return 'modernera'
+    else:
+        return 'contemporaryera'
+    
 books_final['metadata'] = (
     books_final['author'].apply(normalize_author) + ' ' +
-    books_final['genres'].apply(normalize_genres)
+    books_final['genres'].apply(normalize_genres) + ' '
+    + books_final['pages'].apply(normalize_pages) + ' '
+    + books_final['year_published'].apply(normalize_year)
 )
 tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
 tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
