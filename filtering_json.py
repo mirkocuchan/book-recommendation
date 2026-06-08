@@ -86,8 +86,7 @@ def normalize_year(year):
 books_final['metadata'] = (
     books_final['author'].apply(normalize_author) + ' ' +
     books_final['genres'].apply(normalize_genres) + ' ' +
-    books_final['pages'].apply(normalize_pages) + ' ' + 
-    books_final['year_published'].apply(normalize_year)
+    books_final['pages'].apply(normalize_pages)
 )
 tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
 tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
@@ -130,15 +129,31 @@ def user_based_recommendation(file_path):
         user_books = user_books.merge(books_final.reset_index(), on='title')
 
         user_vector = np.zeros(tfidf_matrix.shape[1])
+        user_desc_vector = np.zeros(tfidf_matrix.shape[1])
+
+        user_meta_vector = np.zeros(
+            tfidf_matrix_meta.shape[1]
+        )
 
         for _, row in user_books.iterrows():
             book_idx = row['index'] 
             rating = row['my_rating']
 
             weight = rating / 5  
-            user_vector += tfidf_matrix[book_idx].toarray()[0] * weight
+            user_desc_vector += (tfidf_matrix[book_idx].toarray()[0] * weight)
+
+            user_meta_vector += (
+                tfidf_matrix_meta[book_idx].toarray()[0]
+                * weight
+            )
         #cambiamos la shape asi cosine la toma 
-        similarity = cosine_similarity(user_vector.reshape(1, -1), tfidf_matrix)
+        similarity_desc = cosine_similarity(user_desc_vector.reshape(1, -1), tfidf_matrix)
+
+        similarity_meta = cosine_similarity(
+            user_meta_vector.reshape(1, -1),
+            tfidf_matrix_meta
+        )
+        similarity = (0.6 * similarity_desc + 0.4 * similarity_meta)
         scores = list(enumerate(similarity[0]))
 
         scores = sorted(scores, key=lambda x: x[1], reverse=True)
