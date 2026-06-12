@@ -6,88 +6,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from rapidfuzz import process, utils, fuzz
 from sklearn.metrics.pairwise import cosine_similarity
+from scripts.scoring import weighted_rating
 
 
-def clean_description(text):
-    if not isinstance(text, str):
-        return ""
-    
-    text = re.sub(r'<.*?>', ' ', text)
-    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-    text = re.sub(r'([^a-zA-Z\s])', r' \1 ', text)
-    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
-    
-    text = text.lower()
-    return " ".join(text.split())
 
-
-books = pd.read_json('dataset_4k.json')
-
-books_wo_duplicates = books.sort_values(by='num_ratings', ascending=False).drop_duplicates(subset=['title', 'author'], keep='first').copy()
-#duplicados = sorted_books[sorted_books.duplicated(subset=['url'], keep=False)]
-
-avg_rating_all_books = books_wo_duplicates['avg_rating'].mean()
-min_trustable_votes = books_wo_duplicates['num_ratings'].quantile(0.25)
-
-#q_books = books_wo_duplicates.copy().loc[books_wo_duplicates['num_ratings'] >= min_trustable_votes]
-#shape = q_books.shape
-
-#shape1 = books_wo_duplicates.shape
-#print(shape)
-#print(shape1)
-def weighted_rating(book, min_trustable_votes, avg_rating_all_books):
-    v = book['num_ratings']
-    R = book['avg_rating']
-    return (v/(v+min_trustable_votes) * R) + (min_trustable_votes/(min_trustable_votes+v) * avg_rating_all_books)
-
-books_wo_duplicates['weighted_score'] = books_wo_duplicates.apply(
-    weighted_rating, 
-    axis=1, 
-    args=(min_trustable_votes, avg_rating_all_books)
-)
-
-books_final = books_wo_duplicates.sort_values(by='weighted_score', ascending=False)
-books_final = books_final.reset_index(drop=True)
-
-books_final['description_clean'] = books_final['description'].apply(clean_description)
-
-def normalize_genres(genres, n=4):
-    if not isinstance(genres, list):
-        return ''
-    return ' '.join(
-        g.lower().replace(' ', '') for g in genres[:n]
-    )
-def normalize_author(author):
-    if not isinstance(author, str):
-        return ''
-    return author.lower().replace(' ', '')
-def normalize_pages(pages):
-    if pd.isna(pages):
-        return ''
-    
-    if pages < 200:
-        return 'shortbook'
-    elif pages < 500:
-        return 'mediumbook'
-    else:
-        return 'longbook'
-
-def normalize_year(year):
-    if pd.isna(year):
-        return ''
-
-    if year < 1950:
-        return 'classicera'
-    elif year < 2000:
-        return 'modernera'
-    else:
-        return 'contemporaryera'
-    
-books_final['metadata'] = (
-    books_final['author'].apply(normalize_author) + ' ' +
-    books_final['genres'].apply(normalize_genres) + ' ' +
-    books_final['pages'].apply(normalize_pages)
-)
 tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
 tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
 #books_final['description_clean'] = books_final['description_clean'].fillna('')
@@ -113,13 +35,6 @@ cosine_final = peso_desc * cosine_sim_desc + peso_meta * cosine_sim_meta
 indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
 
 books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
-STOPWORDS = {
-    "the", "of", "and", "to", "in", "a", "an", "for", "on", "with", "book"
-}
-def has_token_overlap(a, b, min_common=2):
-    tokens_a = {t for t in a.lower().split() if t not in STOPWORDS and not t.isdigit()}
-    tokens_b = {t for t in b.lower().split() if t not in STOPWORDS and not t.isdigit()}
-    return len(tokens_a & tokens_b) >= min_common
 
 def user_based_recommendation(file_path):
     try:

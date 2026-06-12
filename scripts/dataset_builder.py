@@ -1,5 +1,5 @@
-from scripts.web_scrapping_dataset import scrape_goodreads_dataset
-from scripts.file_utils import merge_json_files
+from scripts.web_scrapping import scrape_goodreads_dataset
+from scripts.utils.file_utils import merge_json_files
 
 def build_dataset():
     scrape_goodreads_dataset("fiction", num_books=3000)

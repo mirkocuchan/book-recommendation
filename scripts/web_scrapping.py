@@ -3,6 +3,7 @@ import re
 import json
 import time
 from bs4 import BeautifulSoup
+from scripts.utils.file_utils import save_dataset
 
 def extract_rating_info(rating_text):
     rating_match = re.search(r'([\d.]+)\s+avg rating', rating_text)
@@ -17,7 +18,15 @@ def scrape_book_details(book_url, headers):
         response = requests.get(book_url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        
+        year = None
+
+        details_text = soup.get_text(" ", strip=True)
+
+        year_match = re.search(r'published\s+(\d{4})', details_text, re.IGNORECASE)
+
+        if year_match:
+            year = int(year_match.group(1))
+
         description_elem = soup.find('div', {'data-testid': 'description'})
         description = description_elem.get_text(strip=True) if description_elem else None
         
@@ -38,14 +47,9 @@ def scrape_book_details(book_url, headers):
             pages = int(pages_match.group(1)) if pages_match else None
             book_format = format_match.group(1) if format_match else None
         
-        return {
-            'description': description,
-            'genres': genres,
-            'pages': pages,
-            'format': book_format
-        }
+        return {'description': description, 'genres': genres, 'pages': pages, 'format': book_format, 'year_published': year}
     except Exception as e:
-        return {'description': None, 'genres': [], 'pages': None, 'format': None}
+        return {'description': None, 'genres': [], 'pages': None, 'format': None, 'year_published': None}
 
 def scrape_goodreads_dataset(genre_type='fiction', num_books=7000):
     dataset = []
@@ -127,16 +131,3 @@ def scrape_goodreads_dataset(genre_type='fiction', num_books=7000):
     save_dataset(dataset, f'goodreads_{genre_type}_final.json')
     return dataset
 
-def save_dataset(dataset, filename):
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(dataset, f, indent=2, ensure_ascii=False)
-
-def merge_json_files(file1, file2, output_file):
-    try:
-        with open(file1, 'r', encoding='utf-8') as f1, open(file2, 'r', encoding='utf-8') as f2:
-            d1, d2 = json.load(f1), json.load(f2)
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(d1 + d2, f, indent=2, ensure_ascii=False)
-        print(f"\nDataset total creado: {output_file}")
-    except Exception as e:
-        print(f"Error al unir: {e}")
