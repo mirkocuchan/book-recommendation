@@ -1,3 +1,6 @@
+import re
+import pandas as pd
+
 def clean_description(text):
     if not isinstance(text, str):
         return ""

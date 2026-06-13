@@ -1,3 +1,13 @@
+import pandas as pd
+
+from scripts.scoring import weighted_rating
+from scripts.utils.text_utils import (
+    clean_description,
+    normalize_author,
+    normalize_genres,
+    normalize_pages
+)
+
 def prepare_books_dataset():
     books = pd.read_json('dataset_4k.json')
 

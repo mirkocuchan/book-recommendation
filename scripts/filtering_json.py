@@ -8,32 +8,41 @@ from rapidfuzz import process, utils, fuzz
 from sklearn.metrics.pairwise import cosine_similarity
 from scripts.scoring import weighted_rating
 
+from scripts.dataset_preprocessing import prepare_books_dataset
+from scripts.utils.text_utils import (
+    STOPWORDS,
+    has_token_overlap
+)
 
+def build_recommender():
+    books_final = prepare_books_dataset()
 
-tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
-tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
-#books_final['description_clean'] = books_final['description_clean'].fillna('')
+    tfidf = TfidfVectorizer(stop_words='english', min_df=5, max_df=0.8)
+    tfidf_meta = TfidfVectorizer(stop_words='english', min_df=1)
+    #books_final['description_clean'] = books_final['description_clean'].fillna('')
 
-tfidf_matrix = tfidf.fit_transform(books_final['description_clean'])
-tfidf_matrix_meta = tfidf_meta.fit_transform(books_final['metadata'])
+    tfidf_matrix = tfidf.fit_transform(books_final['description_clean'])
+    tfidf_matrix_meta = tfidf_meta.fit_transform(books_final['metadata'])
 
-tfidf_matrix.shape
-tfidf_matrix_meta.shape
+    tfidf_matrix.shape
+    tfidf_matrix_meta.shape
 
-#values = tfidf.get_feature_names_out()[3000:3050]
-#print(values)
-#this helps us get the similarities between the books, based on the words they use in the descriptions
-#cosine similarity, useful formula for this step, wikipedia page is very good
-cosine_sim_desc = linear_kernel(tfidf_matrix, tfidf_matrix)
-cosine_sim_meta = linear_kernel(tfidf_matrix_meta, tfidf_matrix_meta)
+    #values = tfidf.get_feature_names_out()[3000:3050]
+    #print(values)
+    #this helps us get the similarities between the books, based on the words they use in the descriptions
+    #cosine similarity, useful formula for this step, wikipedia page is very good
+    cosine_sim_desc = linear_kernel(tfidf_matrix, tfidf_matrix)
+    cosine_sim_meta = linear_kernel(tfidf_matrix_meta, tfidf_matrix_meta)
 
-peso_desc = 0.7
-peso_meta = 0.3
-cosine_final = peso_desc * cosine_sim_desc + peso_meta * cosine_sim_meta
-#with the title we can identify the index of a book
+    peso_desc = 0.7
+    peso_meta = 0.3
+    cosine_final = peso_desc * cosine_sim_desc + peso_meta * cosine_sim_meta
+    #with the title we can identify the index of a book
 
-indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
+    indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
+    return (books_final, cosine_final, indices, tfidf_matrix, tfidf_matrix_meta)
 
+books_final, cosine_final, indices, tfidf_matrix, tfidf_matrix_meta = build_recommender()
 books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 
 def user_based_recommendation(file_path):
