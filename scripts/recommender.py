@@ -6,13 +6,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from rapidfuzz import process, utils, fuzz
 from sklearn.metrics.pairwise import cosine_similarity
-from scripts.scoring import weighted_rating
 
 from scripts.dataset_preprocessing import prepare_books_dataset
-from scripts.utils.text_utils import (
-    STOPWORDS,
-    has_token_overlap
-)
+from scripts.utils.text_utils import (STOPWORDS, has_token_overlap)
 
 def build_recommender():
     books_final = prepare_books_dataset()
@@ -52,12 +48,8 @@ def user_based_recommendation(file_path):
 
         user_books = user_books.merge(books_final.reset_index(), on='title')
 
-        user_vector = np.zeros(tfidf_matrix.shape[1])
         user_desc_vector = np.zeros(tfidf_matrix.shape[1])
-
-        user_meta_vector = np.zeros(
-            tfidf_matrix_meta.shape[1]
-        )
+        user_meta_vector = np.zeros(tfidf_matrix_meta.shape[1])
 
         for _, row in user_books.iterrows():
             book_idx = row['index'] 
@@ -66,17 +58,12 @@ def user_based_recommendation(file_path):
             weight = rating / 5  
             user_desc_vector += (tfidf_matrix[book_idx].toarray()[0] * weight)
 
-            user_meta_vector += (
-                tfidf_matrix_meta[book_idx].toarray()[0]
-                * weight
-            )
+            user_meta_vector += (tfidf_matrix_meta[book_idx].toarray()[0] * weight)
+
         #cambiamos la shape asi cosine la toma 
         similarity_desc = cosine_similarity(user_desc_vector.reshape(1, -1), tfidf_matrix)
+        similarity_meta = cosine_similarity(user_meta_vector.reshape(1, -1), tfidf_matrix_meta)
 
-        similarity_meta = cosine_similarity(
-            user_meta_vector.reshape(1, -1),
-            tfidf_matrix_meta
-        )
         similarity = (0.6 * similarity_desc + 0.4 * similarity_meta)
         scores = list(enumerate(similarity[0]))
 
@@ -84,7 +71,8 @@ def user_based_recommendation(file_path):
         top_recommendations = [i for i, _ in scores[:10]]
 
         recommendations = books_final.loc[top_recommendations, ['title', 'author', 'weighted_score']]
-
+        return recommendations.reset_index(drop=True)
+    
     except FileNotFoundError:
         print("Error: El archivo no existe en esa ruta.")
         return None
@@ -108,11 +96,8 @@ def get_recommendations(title, cosine_sim=cosine_final):
         if saga_matches:
             query = saga_matches[0]
         else:
-            best_match = process.extractOne(
-                query,
-                indices.index,
-                scorer=fuzz.partial_token_set_ratio
-            )
+            best_match = process.extractOne(query, indices.index, scorer=fuzz.partial_token_set_ratio)
+            
             if not best_match:
                 return f"'{title}' not found. Try again."
         
@@ -154,26 +139,3 @@ def get_recommendations(title, cosine_sim=cosine_final):
         #return books_final[['title', 'author', 'weighted_score']].iloc[book_indices].reset_index(drop=True)
     except Exception as e:
         return f"Some error occured with '{query}': {e}"
-
-while True:
-    user_input = input("\nName of the book you enjoyed or drag and drop your Goodreads Export (or just write 'exit'): ")
-    user_input = user_input.replace('"', '').replace("'", "")
-    if user_input.lower() == 'exit':
-        break
-    
-    if user_input.endswith('.csv') and os.path.exists(user_input):
-        print(f"Reading file: {user_input}...")
-        recomendaciones = user_based_recommendation(user_input)
-    else:
-        recomendaciones = get_recommendations(user_input)
-    
-    if isinstance(recomendaciones, str):
-        print(recomendaciones)
-    else:
-        if user_input.endswith('.csv'):
-            print(f"\nBased on your library, you should try:\n")
-        else:
-            print(f"\nIf you liked '{user_input}', you should try:\n")
-        print(recomendaciones[['title', 'author', 'weighted_score']])
-#weight_of_rating = ((votes_of_book // votes_of_book + min_trustable_votes) * book_average_score) + (min_trustable_votes // (min_trustable_votes + votes_of_book) * avg_rating_all_books)
-
