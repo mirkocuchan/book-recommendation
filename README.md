@@ -1,6 +1,8 @@
 # Book Recommendation Engine
-
-Python CLI Content-Based Recommender Status
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Machine Learning](https://img.shields.io/badge/ML-Content%20Based%20Filtering-orange)
+![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-TF--IDF-yellow)
+![Status](https://img.shields.io/badge/Project-Complete-success)
 
 A content-based book recommendation engine built with Python, TF-IDF vectorization, and Goodreads data.
 
@@ -83,6 +85,7 @@ The Goodreads recommendation workflow adds an additional personalization layer b
 
 The project follows a modular architecture that separates dataset processing, recommendation logic, scoring, and user interaction.
 
+```text
 User Input
 ↓
 CLI Interface
@@ -92,7 +95,7 @@ Recommendation Engine
 Similarity Calculation
 ↓
 Processed Dataset
-
+```
 ### CLI Layer
 
 Responsible for:
@@ -285,19 +288,6 @@ book-recommendation/
 ├── main.sh
 └── requirements.txt
 ```
-
----
-
-## Future Improvements
-
-* Web interface
-* REST API version
-* Hybrid recommendation model
-* Collaborative filtering
-* Author-based recommendations
-* Genre filtering
-* Recommendation explanations
-* Docker deployment
 
 ---
 
