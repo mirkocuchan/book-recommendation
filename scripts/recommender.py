@@ -44,10 +44,17 @@ books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 def user_based_recommendation(file_path):
     try:
         user_books_csv = pd.read_csv(file_path, on_bad_lines='skip')
-        user_books = user_books_csv[['Title', 'My Rating']].copy()
         
-        user_books.columns = ['title', 'my_rating']
+        required_columns = ['Title', 'My Rating']
+        missing = [c for c in required_columns if c not in user_books_csv.columns]
 
+        if missing:
+            raise ValueError(f"CSV must contain columns: {required_columns}")
+        
+        user_books = user_books_csv[['Title', 'My Rating']].copy()
+        user_books.columns = ['title', 'my_rating']
+        user_books = user_books[user_books["my_rating"] > 0]
+        
         user_books = user_books.merge(books_final.reset_index(), on='title')
 
         user_desc_vector = np.zeros(tfidf_matrix.shape[1])
@@ -70,9 +77,14 @@ def user_based_recommendation(file_path):
         scores = list(enumerate(similarity[0]))
 
         scores = sorted(scores, key=lambda x: x[1], reverse=True)
-        top_recommendations = [i for i, _ in scores[:10]]
+        top_recommendations = [i for i, _ in scores[:50]]
+        
+        read_books = set(user_books["title"])
 
         recommendations = books_final.loc[top_recommendations, ['title', 'author', 'weighted_score']]
+
+        recommendations = recommendations[~recommendations["title"].isin(read_books)].head(10)
+
         return recommendations.reset_index(drop=True)
     
     except FileNotFoundError:

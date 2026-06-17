@@ -9,7 +9,7 @@ from scripts.utils.text_utils import (
 )
 
 def prepare_books_dataset():
-    books = pd.read_json('dataset_4k.json')
+    books = pd.read_json('dataset.json')
 
     books_wo_duplicates = books.sort_values(by='num_ratings', ascending=False).drop_duplicates(subset=['title', 'author'], keep='first').copy()
     #duplicados = sorted_books[sorted_books.duplicated(subset=['url'], keep=False)]
