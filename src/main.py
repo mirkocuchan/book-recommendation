@@ -16,13 +16,11 @@ def main():
         else:
             recomendaciones = get_recommendations(user_input)
         
-        if isinstance(recomendaciones, str):
+        if recomendaciones is None:
+            print("Could not generate recommendations.")
+        elif isinstance(recomendaciones, str):
             print(recomendaciones)
         else:
-            if user_input.endswith('.csv'):
-                print(f"\nBased on your library, you should try:\n")
-            else:
-                print(f"\nIf you liked '{user_input}', you should try:\n")
             print(recomendaciones[['title', 'author', 'weighted_score']])
     #weight_of_rating = ((votes_of_book // votes_of_book + min_trustable_votes) * book_average_score) + (min_trustable_votes // (min_trustable_votes + votes_of_book) * avg_rating_all_books)
 

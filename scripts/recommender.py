@@ -44,7 +44,9 @@ books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 def user_based_recommendation(file_path):
     try:
         user_books_csv = pd.read_csv(file_path, on_bad_lines='skip')
-        user_books = user_books_csv[['title', 'my rating']]
+        user_books = user_books_csv[['Title', 'My Rating']].copy()
+        
+        user_books.columns = ['title', 'my_rating']
 
         user_books = user_books.merge(books_final.reset_index(), on='title')
 
