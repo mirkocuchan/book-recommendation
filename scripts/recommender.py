@@ -36,9 +36,9 @@ def build_recommender():
     #with the title we can identify the index of a book
 
     indices = pd.Series(books_final.index, index=books_final['title']).drop_duplicates()
-    return (books_final, cosine_final, indices, tfidf_matrix, tfidf_matrix_meta)
+    return (books_final, cosine_final, indices, tfidf, tfidf_matrix, tfidf_matrix_meta)
 
-books_final, cosine_final, indices, tfidf_matrix, tfidf_matrix_meta = build_recommender()
+books_final, cosine_final, indices, tfidf, tfidf_matrix, tfidf_matrix_meta = build_recommender()
 books_final.to_csv('books_scored.csv', index=False, encoding='utf-8-sig')
 
 def user_based_recommendation(file_path):
@@ -64,7 +64,15 @@ def user_based_recommendation(file_path):
             book_idx = row['index'] 
             rating = row['my_rating']
 
-            weight = rating / 5  
+            rating_weights = {
+                1: -1.0,
+                2: -0.5,
+                3: 0.3,
+                4: 0.7,
+                5: 1.0
+            }
+
+            weight = rating_weights.get(rating, 0)  
             user_desc_vector += (tfidf_matrix[book_idx].toarray()[0] * weight)
 
             user_meta_vector += (tfidf_matrix_meta[book_idx].toarray()[0] * weight)
@@ -94,7 +102,25 @@ def user_based_recommendation(file_path):
         print(f"Ocurrió un error leyendo el CSV: {e}")
         return None
 
-def get_recommendations(title, cosine_sim=cosine_final):
+def get_shared_keywords(source_idx, target_idx, top_n=3):
+    source_vec = tfidf_matrix[source_idx].toarray()[0]
+    target_vec = tfidf_matrix[target_idx].toarray()[0]
+
+    shared = source_vec * target_vec
+
+    features = tfidf.get_feature_names_out()
+
+    top_indices = shared.argsort()[-top_n:]
+
+    keywords = [
+        features[i]
+        for i in reversed(top_indices)
+        if shared[i] > 0
+    ]
+
+    return ", ".join(keywords)
+
+def get_recommendations(title, cosine_sim=cosine_final, top_n=10):
     
     query = title.lower().strip()
     if len(query) < 3 or (query.isdigit() and len(query) < 4) or query in STOPWORDS:
@@ -123,7 +149,8 @@ def get_recommendations(title, cosine_sim=cosine_final):
                 if t not in STOPWORDS and not t.isdigit()
             }
             if score >= min_score and len(query_tokens) == 1 or has_token_overlap(query, candidate, min_common=1):
-                print(f"Couldn't find '{title}', using: '{candidate}'")
+                print(f"Couldn't find '{title}'. "
+                      f"Using closest match: '{candidate}' ({score:.0f}% match)")
                 query = candidate
             else:
                 return f"'{title}' not found. Try again, be a little more specific."
@@ -135,7 +162,7 @@ def get_recommendations(title, cosine_sim=cosine_final):
         sim_scores = list(enumerate(cosine_sim[idx]))
 
         sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-        sim_scores = sim_scores[1:11]
+        sim_scores = sim_scores[1:top_n+1]
         
         candidates = pd.DataFrame(sim_scores, columns=['index', 'similarity'])
         
@@ -148,7 +175,16 @@ def get_recommendations(title, cosine_sim=cosine_final):
         candidates = candidates.sort_values(by='final_score', ascending=False)
         final_indices = candidates['index'].head(10)
 
-        return books_final.loc[final_indices, ['title', 'author', 'weighted_score']].reset_index(drop=True)
+        result = books_final.loc[final_indices, ['title', 'author', 'weighted_score']].reset_index(drop=True)
+        
+        reasons = []
+
+        for recommended_idx in final_indices:
+            reasons.append(get_shared_keywords(idx, recommended_idx))
+        
+        result["reason"] = reasons
+        result["similarity"] = candidates["similarity"].values
+        return result
         #book_indices = [i[0] for i in sim_scores]
         #return books_final[['title', 'author', 'weighted_score']].iloc[book_indices].reset_index(drop=True)
     except Exception as e:
