@@ -181,7 +181,7 @@ pip install -r requirements.txt
 From the project root:
 
 ```bash
-python src/main.py
+python -m src.main
 ```
 
 The application will prompt:
