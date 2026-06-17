@@ -181,9 +181,10 @@ def get_recommendations(title, cosine_sim=cosine_final, top_n=10):
 
         for recommended_idx in final_indices:
             reasons.append(get_shared_keywords(idx, recommended_idx))
-        
         result["reason"] = reasons
-        result["similarity"] = candidates["similarity"].values
+        result["reason"] = ("Shared themes: " + result["reason"])
+        result["similarity"] = (candidates["similarity"].head(10).values * 100).round(1).astype(str) + "%"
+        
         return result
         #book_indices = [i[0] for i in sim_scores]
         #return books_final[['title', 'author', 'weighted_score']].iloc[book_indices].reset_index(drop=True)
