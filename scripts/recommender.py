@@ -171,27 +171,30 @@ def get_recommendations(title, cosine_sim=cosine_final, top_n=10):
         sim_scores = list(enumerate(cosine_sim[idx]))
 
         sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-        sim_scores = sim_scores[1:top_n+1]
+        sim_scores = sim_scores[1:51]
         
         candidates = pd.DataFrame(sim_scores, columns=['index', 'similarity'])
         
-        candidates = candidates.merge(books_final[['weighted_score', 'avg_rating']], left_on='index', right_index=True)
+        candidates = candidates.merge(books_final[['weighted_score', 'avg_rating', 'num_ratings']], left_on='index', right_index=True)
 
+        candidates["ratings_norm"] = (candidates["num_ratings"] / candidates["num_ratings"].max())
         #candidates = candidates[candidates['rating'] >= 3]
         #no es necesario porque no tenemos nada de 3, pero es una posibilidad
 
-        candidates['final_score'] = (candidates['similarity'] * candidates['weighted_score'])
+        candidates['final_score'] = (candidates['similarity'] * candidates['weighted_score'] * (1 + 0.05 * candidates['ratings_norm']))
         candidates = candidates.sort_values(by='final_score', ascending=False)
-        final_indices = candidates['index'].head(10)
+        candidate_indices = candidates['index']
 
         author_count = {}
         filtered_indices = []
-        for book_idx in final_indices:
+        for book_idx in candidate_indices:
             author = books_final.loc[book_idx, "author"]
 
             if author_count.get(author, 0) < 2:
                 filtered_indices.append(book_idx)
                 author_count[author] = author_count.get(author, 0) + 1
+            if len(filtered_indices) == top_n:
+                break
         
         result = books_final.loc[filtered_indices, ['title', 'author', 'weighted_score']].reset_index(drop=True)
         
