@@ -120,6 +120,15 @@ def get_shared_keywords(source_idx, target_idx, top_n=3):
 
     return ", ".join(keywords)
 
+def get_shared_genres(source_idx, target_idx):
+
+    source_genres = set(books_final.loc[source_idx, "genres"])
+    target_genres = set(books_final.loc[target_idx, "genres"])
+
+    shared = source_genres.intersection(target_genres)
+
+    return ", ".join(list(shared)[:3])
+
 def get_recommendations(title, cosine_sim=cosine_final, top_n=10):
     
     query = title.lower().strip()
@@ -175,15 +184,27 @@ def get_recommendations(title, cosine_sim=cosine_final, top_n=10):
         candidates = candidates.sort_values(by='final_score', ascending=False)
         final_indices = candidates['index'].head(10)
 
-        result = books_final.loc[final_indices, ['title', 'author', 'weighted_score']].reset_index(drop=True)
+        author_count = {}
+        filtered_indices = []
+        for book_idx in final_indices:
+            author = books_final.loc[book_idx, "author"]
+
+            if author_count.get(author, 0) < 2:
+                filtered_indices.append(book_idx)
+                author_count[author] = author_count.get(author, 0) + 1
+        
+        result = books_final.loc[filtered_indices, ['title', 'author', 'weighted_score']].reset_index(drop=True)
         
         reasons = []
 
-        for recommended_idx in final_indices:
-            reasons.append(get_shared_keywords(idx, recommended_idx))
+        for recommended_idx in filtered_indices:
+            keywords = get_shared_keywords(idx, recommended_idx)
+            genres = get_shared_genres(idx, recommended_idx)
+
+            reasons.append(f"Genres: {genres} | Themes: {keywords}")
         result["reason"] = reasons
-        result["reason"] = ("Shared themes: " + result["reason"])
-        result["similarity"] = (candidates["similarity"].head(10).values * 100).round(1).astype(str) + "%"
+        similarities = (candidates.set_index("index").loc[filtered_indices, "similarity"].values)
+        result["similarity"] = ((similarities * 100).round(1).astype(str) + "%")
         
         return result
         #book_indices = [i[0] for i in sim_scores]

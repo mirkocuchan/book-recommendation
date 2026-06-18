@@ -22,7 +22,14 @@ def main():
             elif isinstance(recomendaciones, str):
                 print(recomendaciones)
             else:
-                print(recomendaciones)
+                print("\nTop recommendations:\n")
+                
+                for i, (_, row) in enumerate(recomendaciones.iterrows(), start=1):
+                    print(
+                        f"\n{i}. {row['title']} - {row['author']}"
+                        f"\n   Similarity: {row['similarity']}"
+                        f"\n   {row['reason']}"
+                    )
     except KeyboardInterrupt:
         print("\nGoodbye!")
     #weight_of_rating = ((votes_of_book // votes_of_book + min_trustable_votes) * book_average_score) + (min_trustable_votes // (min_trustable_votes + votes_of_book) * avg_rating_all_books)
